@@ -21,7 +21,7 @@ const _ = grpc.SupportPackageIsVersion9
 const (
 	Auht_Register_FullMethodName = "/auth.Auht/Register"
 	Auht_Login_FullMethodName    = "/auth.Auht/Login"
-	Auht_IsAdmin_FullMethodName  = "/auth.Auht/IsAdmin"
+	Auht_Users_FullMethodName    = "/auth.Auht/Users"
 )
 
 // AuhtClient is the client API for Auht service.
@@ -30,7 +30,7 @@ const (
 type AuhtClient interface {
 	Register(ctx context.Context, in *RegisterRequest, opts ...grpc.CallOption) (*RegisterResponse, error)
 	Login(ctx context.Context, in *LoginRequest, opts ...grpc.CallOption) (*LoginResponse, error)
-	IsAdmin(ctx context.Context, in *IsAdminRueqest, opts ...grpc.CallOption) (*IsAdminResponse, error)
+	Users(ctx context.Context, in *UsersRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[User], error)
 }
 
 type auhtClient struct {
@@ -61,15 +61,24 @@ func (c *auhtClient) Login(ctx context.Context, in *LoginRequest, opts ...grpc.C
 	return out, nil
 }
 
-func (c *auhtClient) IsAdmin(ctx context.Context, in *IsAdminRueqest, opts ...grpc.CallOption) (*IsAdminResponse, error) {
+func (c *auhtClient) Users(ctx context.Context, in *UsersRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[User], error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(IsAdminResponse)
-	err := c.cc.Invoke(ctx, Auht_IsAdmin_FullMethodName, in, out, cOpts...)
+	stream, err := c.cc.NewStream(ctx, &Auht_ServiceDesc.Streams[0], Auht_Users_FullMethodName, cOpts...)
 	if err != nil {
 		return nil, err
 	}
-	return out, nil
+	x := &grpc.GenericClientStream[UsersRequest, User]{ClientStream: stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
 }
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type Auht_UsersClient = grpc.ServerStreamingClient[User]
 
 // AuhtServer is the server API for Auht service.
 // All implementations must embed UnimplementedAuhtServer
@@ -77,7 +86,7 @@ func (c *auhtClient) IsAdmin(ctx context.Context, in *IsAdminRueqest, opts ...gr
 type AuhtServer interface {
 	Register(context.Context, *RegisterRequest) (*RegisterResponse, error)
 	Login(context.Context, *LoginRequest) (*LoginResponse, error)
-	IsAdmin(context.Context, *IsAdminRueqest) (*IsAdminResponse, error)
+	Users(*UsersRequest, grpc.ServerStreamingServer[User]) error
 	mustEmbedUnimplementedAuhtServer()
 }
 
@@ -94,8 +103,8 @@ func (UnimplementedAuhtServer) Register(context.Context, *RegisterRequest) (*Reg
 func (UnimplementedAuhtServer) Login(context.Context, *LoginRequest) (*LoginResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Login not implemented")
 }
-func (UnimplementedAuhtServer) IsAdmin(context.Context, *IsAdminRueqest) (*IsAdminResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method IsAdmin not implemented")
+func (UnimplementedAuhtServer) Users(*UsersRequest, grpc.ServerStreamingServer[User]) error {
+	return status.Errorf(codes.Unimplemented, "method Users not implemented")
 }
 func (UnimplementedAuhtServer) mustEmbedUnimplementedAuhtServer() {}
 func (UnimplementedAuhtServer) testEmbeddedByValue()              {}
@@ -154,23 +163,16 @@ func _Auht_Login_Handler(srv interface{}, ctx context.Context, dec func(interfac
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Auht_IsAdmin_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(IsAdminRueqest)
-	if err := dec(in); err != nil {
-		return nil, err
+func _Auht_Users_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(UsersRequest)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
 	}
-	if interceptor == nil {
-		return srv.(AuhtServer).IsAdmin(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: Auht_IsAdmin_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(AuhtServer).IsAdmin(ctx, req.(*IsAdminRueqest))
-	}
-	return interceptor(ctx, in, info, handler)
+	return srv.(AuhtServer).Users(m, &grpc.GenericServerStream[UsersRequest, User]{ServerStream: stream})
 }
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type Auht_UsersServer = grpc.ServerStreamingServer[User]
 
 // Auht_ServiceDesc is the grpc.ServiceDesc for Auht service.
 // It's only intended for direct use with grpc.RegisterService,
@@ -187,11 +189,13 @@ var Auht_ServiceDesc = grpc.ServiceDesc{
 			MethodName: "Login",
 			Handler:    _Auht_Login_Handler,
 		},
+	},
+	Streams: []grpc.StreamDesc{
 		{
-			MethodName: "IsAdmin",
-			Handler:    _Auht_IsAdmin_Handler,
+			StreamName:    "Users",
+			Handler:       _Auht_Users_Handler,
+			ServerStreams: true,
 		},
 	},
-	Streams:  []grpc.StreamDesc{},
 	Metadata: "sso/sso.proto",
 }
