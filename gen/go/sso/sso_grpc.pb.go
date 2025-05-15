@@ -30,7 +30,7 @@ const (
 type AuhtClient interface {
 	Register(ctx context.Context, in *RegisterRequest, opts ...grpc.CallOption) (*RegisterResponse, error)
 	Login(ctx context.Context, in *LoginRequest, opts ...grpc.CallOption) (*LoginResponse, error)
-	Users(ctx context.Context, in *UsersRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[User], error)
+	Users(ctx context.Context, in *UsersRequest, opts ...grpc.CallOption) (*UsersResponse, error)
 }
 
 type auhtClient struct {
@@ -61,24 +61,15 @@ func (c *auhtClient) Login(ctx context.Context, in *LoginRequest, opts ...grpc.C
 	return out, nil
 }
 
-func (c *auhtClient) Users(ctx context.Context, in *UsersRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[User], error) {
+func (c *auhtClient) Users(ctx context.Context, in *UsersRequest, opts ...grpc.CallOption) (*UsersResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	stream, err := c.cc.NewStream(ctx, &Auht_ServiceDesc.Streams[0], Auht_Users_FullMethodName, cOpts...)
+	out := new(UsersResponse)
+	err := c.cc.Invoke(ctx, Auht_Users_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
-	x := &grpc.GenericClientStream[UsersRequest, User]{ClientStream: stream}
-	if err := x.ClientStream.SendMsg(in); err != nil {
-		return nil, err
-	}
-	if err := x.ClientStream.CloseSend(); err != nil {
-		return nil, err
-	}
-	return x, nil
+	return out, nil
 }
-
-// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
-type Auht_UsersClient = grpc.ServerStreamingClient[User]
 
 // AuhtServer is the server API for Auht service.
 // All implementations must embed UnimplementedAuhtServer
@@ -86,7 +77,7 @@ type Auht_UsersClient = grpc.ServerStreamingClient[User]
 type AuhtServer interface {
 	Register(context.Context, *RegisterRequest) (*RegisterResponse, error)
 	Login(context.Context, *LoginRequest) (*LoginResponse, error)
-	Users(*UsersRequest, grpc.ServerStreamingServer[User]) error
+	Users(context.Context, *UsersRequest) (*UsersResponse, error)
 	mustEmbedUnimplementedAuhtServer()
 }
 
@@ -103,8 +94,8 @@ func (UnimplementedAuhtServer) Register(context.Context, *RegisterRequest) (*Reg
 func (UnimplementedAuhtServer) Login(context.Context, *LoginRequest) (*LoginResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Login not implemented")
 }
-func (UnimplementedAuhtServer) Users(*UsersRequest, grpc.ServerStreamingServer[User]) error {
-	return status.Errorf(codes.Unimplemented, "method Users not implemented")
+func (UnimplementedAuhtServer) Users(context.Context, *UsersRequest) (*UsersResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Users not implemented")
 }
 func (UnimplementedAuhtServer) mustEmbedUnimplementedAuhtServer() {}
 func (UnimplementedAuhtServer) testEmbeddedByValue()              {}
@@ -163,16 +154,23 @@ func _Auht_Login_Handler(srv interface{}, ctx context.Context, dec func(interfac
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Auht_Users_Handler(srv interface{}, stream grpc.ServerStream) error {
-	m := new(UsersRequest)
-	if err := stream.RecvMsg(m); err != nil {
-		return err
+func _Auht_Users_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UsersRequest)
+	if err := dec(in); err != nil {
+		return nil, err
 	}
-	return srv.(AuhtServer).Users(m, &grpc.GenericServerStream[UsersRequest, User]{ServerStream: stream})
+	if interceptor == nil {
+		return srv.(AuhtServer).Users(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Auht_Users_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AuhtServer).Users(ctx, req.(*UsersRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
-
-// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
-type Auht_UsersServer = grpc.ServerStreamingServer[User]
 
 // Auht_ServiceDesc is the grpc.ServiceDesc for Auht service.
 // It's only intended for direct use with grpc.RegisterService,
@@ -189,13 +187,11 @@ var Auht_ServiceDesc = grpc.ServiceDesc{
 			MethodName: "Login",
 			Handler:    _Auht_Login_Handler,
 		},
-	},
-	Streams: []grpc.StreamDesc{
 		{
-			StreamName:    "Users",
-			Handler:       _Auht_Users_Handler,
-			ServerStreams: true,
+			MethodName: "Users",
+			Handler:    _Auht_Users_Handler,
 		},
 	},
+	Streams:  []grpc.StreamDesc{},
 	Metadata: "sso/sso.proto",
 }

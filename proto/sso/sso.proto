@@ -7,7 +7,7 @@ option go_package = "zharik.sso.v6;ssov6";
 service Auht{
     rpc Register (RegisterRequest) returns (RegisterResponse);
     rpc Login (LoginRequest) returns (LoginResponse);
-    rpc Users (UsersRequest) returns (stream User);
+    rpc Users (UsersRequest) returns (UsersResponse);
 }
 
 message RegisterRequest{
@@ -32,8 +32,12 @@ message LoginResponse{
 
 message User{
     int64 user_id = 1;
-    string emall = 2;
+    string email = 2;
     string full_name = 3;
 }
 
 message UsersRequest{}
+
+message UsersResponse {
+    repeated User users = 1;
+}
