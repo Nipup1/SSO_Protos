@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package auth;
 
-option go_package = "zharik.sso.v4;ssov4";
+option go_package = "zharik.sso.v5;ssov5";
 
 service Auht{
     rpc Register (RegisterRequest) returns (RegisterResponse);
@@ -13,6 +13,7 @@ service Auht{
 message RegisterRequest{
     string email = 1;
     string password = 2;
+    string full_name = 3;
 }
 
 message RegisterResponse{
