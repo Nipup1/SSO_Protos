@@ -233,7 +233,7 @@ type User struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	UserId        int64                  `protobuf:"varint,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty" gorm:"column:id"`
 	Email         string                 `protobuf:"bytes,2,opt,name=email,proto3" json:"email,omitempty" gorm:"column:email"`
-	FullName      string                 `protobuf:"bytes,3,opt,name=full_name,json=fullName,proto3" json:"full_name,omitempty" gorm:"column:email" gorm:"column:full_name"`
+	FullName      string                 `protobuf:"bytes,3,opt,name=full_name,json=fullName,proto3" json:"full_name,omitempty" gorm:"column:full_name"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
