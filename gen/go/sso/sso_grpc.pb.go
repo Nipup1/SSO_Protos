@@ -22,6 +22,7 @@ const (
 	Auht_Register_FullMethodName = "/auth.Auht/Register"
 	Auht_Login_FullMethodName    = "/auth.Auht/Login"
 	Auht_Users_FullMethodName    = "/auth.Auht/Users"
+	Auht_User_FullMethodName     = "/auth.Auht/User"
 )
 
 // AuhtClient is the client API for Auht service.
@@ -31,6 +32,7 @@ type AuhtClient interface {
 	Register(ctx context.Context, in *RegisterRequest, opts ...grpc.CallOption) (*RegisterResponse, error)
 	Login(ctx context.Context, in *LoginRequest, opts ...grpc.CallOption) (*LoginResponse, error)
 	Users(ctx context.Context, in *UsersRequest, opts ...grpc.CallOption) (*UsersResponse, error)
+	User(ctx context.Context, in *UserRequest, opts ...grpc.CallOption) (*UserResponse, error)
 }
 
 type auhtClient struct {
@@ -71,6 +73,16 @@ func (c *auhtClient) Users(ctx context.Context, in *UsersRequest, opts ...grpc.C
 	return out, nil
 }
 
+func (c *auhtClient) User(ctx context.Context, in *UserRequest, opts ...grpc.CallOption) (*UserResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(UserResponse)
+	err := c.cc.Invoke(ctx, Auht_User_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // AuhtServer is the server API for Auht service.
 // All implementations must embed UnimplementedAuhtServer
 // for forward compatibility.
@@ -78,6 +90,7 @@ type AuhtServer interface {
 	Register(context.Context, *RegisterRequest) (*RegisterResponse, error)
 	Login(context.Context, *LoginRequest) (*LoginResponse, error)
 	Users(context.Context, *UsersRequest) (*UsersResponse, error)
+	User(context.Context, *UserRequest) (*UserResponse, error)
 	mustEmbedUnimplementedAuhtServer()
 }
 
@@ -96,6 +109,9 @@ func (UnimplementedAuhtServer) Login(context.Context, *LoginRequest) (*LoginResp
 }
 func (UnimplementedAuhtServer) Users(context.Context, *UsersRequest) (*UsersResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Users not implemented")
+}
+func (UnimplementedAuhtServer) User(context.Context, *UserRequest) (*UserResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method User not implemented")
 }
 func (UnimplementedAuhtServer) mustEmbedUnimplementedAuhtServer() {}
 func (UnimplementedAuhtServer) testEmbeddedByValue()              {}
@@ -172,6 +188,24 @@ func _Auht_Users_Handler(srv interface{}, ctx context.Context, dec func(interfac
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Auht_User_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UserRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AuhtServer).User(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Auht_User_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AuhtServer).User(ctx, req.(*UserRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // Auht_ServiceDesc is the grpc.ServiceDesc for Auht service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -190,6 +224,10 @@ var Auht_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Users",
 			Handler:    _Auht_Users_Handler,
+		},
+		{
+			MethodName: "User",
+			Handler:    _Auht_User_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
